@@ -1,0 +1,261 @@
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.util.Scanner;
+import java.util.Vector;
+
+/*
+ * Developed by Cameron Fowler
+ * 
+ * Designed to dig through Java code and extract the DST keywords, then
+ * export them to a file in a more readable format.
+ */
+
+public class Encryptor{
+  
+    private String path = "C://WebDev/workspaces/FAN_TRAC/FANWB/PROD/SUPPORT_89/FANWeb/src/com/dstsystems/mfund";//path to base directory to be read
+    private String destination = "H://";
+    private Vector<FileHolder> contents = new Vector<FileHolder>(); //contents listed by file name
+    private Vector<FileHolder> contentsByKeyword = new Vector<FileHolder>(); //contents listed by keyword
+    private File[] files; //contains all of the files names in the directories
+    private Vector<File> subDirs = new Vector<File>(); //contains the files within the main directory that are actually subdirectories
+    private int tracker = 0; //tracks what has been checked in the subDirs Vector
+    
+    public Encryptor(){
+        listFiles(path);
+        extractFileContents();
+        writeFile();
+    }//end Encryptor()
+    
+    
+    /**
+     * Reads in the file via the given path and records the data about the
+     * keywords that it finds.
+     * @param name
+     */
+    public void readFile(File file){
+        try{
+            //below prints name of file as it is being read; uncomment it for debugging purposes
+            //System.out.println(file.toString());
+            
+            //Creates a scanner to scan the specified file
+            Scanner input = new Scanner(file);
+            
+            //Instantiates a FileHolder to hold the name and contents
+            //then appends it to the end of the vector
+            FileHolder FileHolder = new FileHolder(file.toString());
+            contents.add(FileHolder);
+            
+            //loops through the file given a pattern to search for
+            while(input.hasNext()){
+                String temp = input.next();
+                if(temp.startsWith("/*")){
+                    do{
+                        if(input.hasNextLine()){
+                            temp = input.nextLine();
+                            if(input.hasNext()){
+                                temp = input.next();
+                            }
+                            else{
+                                break;
+                            }//end if
+                        }//end if
+                    } while(!temp.endsWith("*/"));//end do while
+                }//end if
+                if(temp.startsWith("get") && !temp.equals("get")){
+                    Boolean found = false;
+                    while(input.hasNext() && found == false){
+                        temp = input.next();
+                        
+                        if(temp.equals("return")){
+                            temp = input.next();
+                            found = true;
+                            if(correctFormat(temp)){
+                                //adds the keyword into the last FileHolder
+                                contents.get(contents.size()-1).getFileContents().add(temp);
+                            }//end if
+                        }//end if
+                    }//end while
+                }//end if
+            }//end while
+            input.close();
+        }//end try
+        catch( FileNotFoundException e ){
+            e.printStackTrace();
+        }//end catch
+        
+    }//end readFile
+  
+    /**
+     * Reads all of the files in the directory and loops in the same fashion
+     * if there are any subdirectories to be read through
+     */
+    public void extractFileContents(){
+        do{
+            if(files.length != 0){
+                for(int i=0; i<files.length; i++){
+                    if(files[i].isFile()){
+                        readFile(files[i]);
+                    }
+                    else{
+                        subDirs.add(files[i]);
+                    }//end if
+                }//end for
+            }//end if
+            if(!subDirs.isEmpty()){
+                if(subDirs.size() > tracker){
+                    listFiles(subDirs.get(tracker).toString());
+                }//end if
+            }//end if
+            tracker++;
+        }while(tracker-1 < subDirs.size());//end do/while
+    }//end extractFileContents
+    
+    /**
+     * Organizes the contents read from the file via readFile().
+     */
+    public void organizeFile(){
+        //goes through the contents vector and deletes keys that have no keywords
+        for(int i=contents.size()-1; i>=0; i--){
+            if(contents.get(i).getFileContents().isEmpty()){
+                contents.remove(i);
+            }//end if
+        }//end for
+      
+        //makes a temp vector to store all of the keywords in then loops through the keyword holders to get them
+        Vector<String> keywordTemp = new Vector<String>();
+        for(int i=0; i<contents.size(); i++){
+            for(int j=0; j<contents.get(i).getFileContents().size(); j++){
+                if(keywordTemp.contains(contents.get(i).getFileContents().get(j)) != true){
+                    keywordTemp.add(contents.get(i).getFileContents().get(j));
+                }//end if
+            }//end for
+        }//end for
+        
+        //loops through the FileHolders again to register which files go with the keywords
+        //and put them in a new vector of FileHolders
+        for(int i=0; i<keywordTemp.size(); i++){
+            FileHolder FileHolder = new FileHolder(keywordTemp.get(i));
+            contentsByKeyword.add(FileHolder);
+            for(int j=0; j<contents.size(); j++){
+                if(contents.get(j).getFileContents().contains(keywordTemp.get(i))){
+                    contentsByKeyword.get(i).getFileContents().add(contents.get(j).getFileName());
+                }//end if
+            }//end for
+        }//end for
+    }//end organizeFile
+    
+    /**
+     * Writes the file containing the keywords organized in organizeFile().
+     */
+    public void writeFile(){
+        organizeFile();
+        
+        //makes or overwrites a file called KeywordsByF and lists contents by file name
+        try{
+            //if the file Keywords.txt does not exist it is created; if it does exist it is overwritten
+            String fileName = destination + "KeywordsByF.txt";
+            File output = new File(fileName);
+            Boolean exists = output.createNewFile();
+            if(exists == false){
+                output.delete();
+                output.createNewFile();
+            }//end if
+            
+            FileWriter fstream = new FileWriter(fileName);
+            BufferedWriter out = new BufferedWriter(fstream);
+            
+            for(int i=0; i<contents.size(); i++){
+                out.write(contents.get(i).getFileName());
+                out.newLine();
+                out.newLine();
+                for(int j=0; j<contents.get(i).getFileContents().size(); j++){
+                    out.write(contents.get(i).getFileContents().get(j));
+                    out.newLine();
+                }//end for
+                out.newLine();
+                out.newLine();
+                out.newLine();
+            }//end for
+            out.close();
+        }
+        catch( IOException e ){
+            e.printStackTrace();
+        }//end try/catch
+        
+        //makes or overwrites a file called KeywordsByK and lists contents by keyword
+        try{
+          //if the file Keywords.txt does not exist it is created; if it does exist it is overwritten
+          String fileName = destination + "KeywordsByK.txt";
+          File output = new File(fileName);
+          Boolean exists = output.createNewFile();
+          if(exists == false){
+              output.delete();
+              output.createNewFile();
+          }//end if
+          
+          FileWriter fstream = new FileWriter(fileName);
+          BufferedWriter out = new BufferedWriter(fstream);
+          
+          for(int i=0; i<contentsByKeyword.size(); i++){
+              out.write(contentsByKeyword.get(i).getFileName());
+              out.newLine();
+              out.newLine();
+              for(int j=0; j<contentsByKeyword.get(i).getFileContents().size(); j++){
+                  out.write(contentsByKeyword.get(i).getFileContents().get(j));
+                  out.newLine();
+              }//end for
+              out.newLine();
+              out.newLine();
+              out.newLine();
+          }//end for
+          out.close();
+      }
+      catch( IOException e ){
+          e.printStackTrace();
+      }//end try/catch
+      
+    }//end writeFile
+    
+    /**
+     * Checks to see if the given word is in the same format as a keyword
+     * @param word
+     * @return
+     */
+    public Boolean correctFormat(String word){
+        for(char c : word.toCharArray()) {
+            if(Character.isLetter(c) && Character.isLowerCase(c)) {
+                return false;
+            }//end if
+        }//end for
+        for(char c : word.toCharArray()) {
+            if(Character.isLetter(c)) {
+                return true;
+            }//end if
+        }//end for
+        return false;
+    }//end correctFormat
+    
+    /**
+     * Looks in the directory at the path provided and lists all of the files
+     * into the files array
+     * @param path - the path to be followed to find the directory
+     * @return returns an array with all of the file names of the directory
+     */
+    public void listFiles(String path){
+        File dir = new File(path);
+        files = dir.listFiles();
+    }//end listFiles
+    
+    /**
+     * The work for the program is done in the constructor, so when a new instance
+     * of an Encryptor is made, the entire program runs
+     */
+    public static void main(String args[]){
+      
+        Encryptor extract = new Encryptor();
+        
+    }//end main
+}//end Encryptor class
