@@ -1,0 +1,61 @@
+import java.util.Vector;
+
+/*
+ * Developed by Cameron Fowler
+ * 
+ * A class made to hold the name of the file currently being read through
+ * as well as the names of the keywords that it found
+ * 
+ * Can also be used to hold a particular keyword and all of the files that
+ * it is contained in
+ */
+
+
+public class FileHolder
+{ 
+    private String fileName;
+    private Vector<String> fileContents;
+    
+    public FileHolder(){
+        fileName = "";
+        fileContents = new Vector<String>();
+    }//end FileHolder()
+    
+    public FileHolder(String name){
+        fileName = name;
+        fileContents = new Vector<String>();
+    }//end FileHolder(String)
+    
+    /**
+     * @return the fileName
+     */
+    public String getFileName()
+    {
+      return fileName;
+    }//end getFileName
+    
+    /**
+     * @return the fileContents
+     */
+    public Vector<String> getFileContents()
+    {
+      return fileContents;
+    }//end getFileContents
+    
+    /**
+     * @param filename the fileName to set
+     */
+    public void setFileName( String filename )
+    {
+      this.fileName = filename;
+    }//end setFileName
+    
+    /**
+     * @param fileContents the fileContents to set
+     */
+    public void setFileContents( Vector<String> fileContents )
+    {
+      this.fileContents = fileContents;
+    }//end setFileContents
+    
+}//end FileHolder class
